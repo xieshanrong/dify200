@@ -17,17 +17,36 @@ from core.tools.entities.tool_entities import (
 
 class Tool(ABC):
     """
-    The base class of a tool
+    工具的基类
+
+    该类定义了所有工具的基本结构和接口，提供了工具执行、参数处理和消息创建等功能。
+    子类必须实现抽象方法以提供具体的功能实现。
+
+    属性:
+        entity (ToolEntity): 工具实体，包含工具的基本信息和参数定义
+        runtime (ToolRuntime): 工具运行时环境，包含运行时的配置和上下文信息
     """
 
     def __init__(self, entity: ToolEntity, runtime: ToolRuntime):
+        """
+        初始化工具实例
+
+        参数:
+            entity (ToolEntity): 工具实体对象
+            runtime (ToolRuntime): 工具运行时环境对象
+        """
         self.entity = entity
         self.runtime = runtime
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "Tool":
         """
-        fork a new tool with metadata
-        :return: the new tool
+        基于当前工具创建一个新的工具实例，使用新的运行时环境
+
+        参数:
+            runtime (ToolRuntime): 新的运行时环境
+
+        返回:
+            Tool: 使用新运行时环境的工具实例
         """
         return self.__class__(
             entity=self.entity.model_copy(),
@@ -37,9 +56,12 @@ class Tool(ABC):
     @abstractmethod
     def tool_provider_type(self) -> ToolProviderType:
         """
-        get the tool provider type
+        获取工具提供者类型
 
-        :return: the tool provider type
+        抽象方法，子类必须实现该方法以返回工具的提供者类型。
+
+        返回:
+            ToolProviderType: 工具提供者类型枚举值
         """
 
     def invoke(
@@ -50,10 +72,26 @@ class Tool(ABC):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage]:
+        """
+        调用工具执行具体功能
+
+        该方法处理运行时参数，转换参数类型，并调用具体的执行方法。
+        根据执行结果的类型，将其转换为生成器形式返回。
+
+        参数:
+            user_id (str): 用户ID
+            tool_parameters (dict[str, Any]): 工具调用参数
+            conversation_id (Optional[str]): 对话ID
+            app_id (Optional[str]): 应用ID
+            message_id (Optional[str]): 消息ID
+
+        返回:
+            Generator[ToolInvokeMessage]: 工具执行结果的消息生成器
+        """
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
-        # try parse tool parameters into the correct type
+        # 尝试将工具参数转换为正确的类型
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(
@@ -65,12 +103,14 @@ class Tool(ABC):
         )
 
         if isinstance(result, ToolInvokeMessage):
+            # 如果结果是单个消息，创建一个生成单个消息的生成器
 
             def single_generator() -> Generator[ToolInvokeMessage, None, None]:
                 yield result
 
             return single_generator()
         elif isinstance(result, list):
+            # 如果结果是消息列表，创建一个生成列表中所有消息的生成器
 
             def generator() -> Generator[ToolInvokeMessage, None, None]:
                 yield from result
@@ -81,9 +121,17 @@ class Tool(ABC):
 
     def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
         """
-        Transform tool parameters type
+        转换工具参数类型
+
+        根据工具实体中定义的参数类型，将传入的参数值转换为相应的类型。
+
+        参数:
+            tool_parameters (dict[str, Any]): 待转换的工具参数
+
+        返回:
+            dict[str, Any]: 转换后的工具参数
         """
-        # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
+        # 临时修复：在验证凭据时工具参数可能被转换为空的问题
         result = deepcopy(tool_parameters)
         for parameter in self.entity.parameters or []:
             if parameter.name in tool_parameters:
@@ -100,6 +148,22 @@ class Tool(ABC):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+        """
+        工具具体执行逻辑
+
+        抽象方法，子类必须实现该方法以提供具体的工具执行逻辑。
+
+        参数:
+            user_id (str): 用户ID
+            tool_parameters (dict[str, Any]): 工具调用参数
+            conversation_id (Optional[str]): 对话ID
+            app_id (Optional[str]): 应用ID
+            message_id (Optional[str]): 消息ID
+
+        返回:
+            ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+            工具执行结果，可以是单个消息、消息列表或消息生成器
+        """
         pass
 
     def get_runtime_parameters(
@@ -109,11 +173,17 @@ class Tool(ABC):
         message_id: Optional[str] = None,
     ) -> list[ToolParameter]:
         """
-        get the runtime parameters
+        获取运行时参数
 
-        interface for developer to dynamic change the parameters of a tool depends on the variables pool
+        为开发者提供动态更改工具参数的接口，可根据变量池的内容来调整工具参数。
 
-        :return: the runtime parameters
+        参数:
+            conversation_id (Optional[str]): 对话ID
+            app_id (Optional[str]): 应用ID
+            message_id (Optional[str]): 消息ID
+
+        返回:
+            list[ToolParameter]: 运行时参数列表
         """
         return self.entity.parameters
 
@@ -124,21 +194,30 @@ class Tool(ABC):
         message_id: Optional[str] = None,
     ) -> list[ToolParameter]:
         """
-        get merged runtime parameters
+        获取合并后的运行时参数
 
-        :return: merged runtime parameters
+        将工具实体中的参数与运行时参数进行合并，运行时参数会覆盖实体中的同名参数，
+        如果有新的参数则添加到参数列表中。
+
+        参数:
+            conversation_id (Optional[str]): 对话ID
+            app_id (Optional[str]): 应用ID
+            message_id (Optional[str]): 消息ID
+
+        返回:
+            list[ToolParameter]: 合并后的运行时参数列表
         """
         parameters = self.entity.parameters
         parameters = parameters.copy()
         user_parameters = self.get_runtime_parameters() or []
         user_parameters = user_parameters.copy()
 
-        # override parameters
+        # 覆盖参数
         for parameter in user_parameters:
-            # check if parameter in tool parameters
+            # 检查参数是否在工具参数中存在
             for tool_parameter in parameters:
                 if tool_parameter.name == parameter.name:
-                    # override parameter
+                    # 覆盖参数属性
                     tool_parameter.type = parameter.type
                     tool_parameter.form = parameter.form
                     tool_parameter.required = parameter.required
@@ -147,7 +226,7 @@ class Tool(ABC):
                     tool_parameter.llm_description = parameter.llm_description
                     break
             else:
-                # add new parameter
+                # 添加新参数
                 parameters.append(parameter)
 
         return parameters
@@ -157,16 +236,28 @@ class Tool(ABC):
         image: str,
     ) -> ToolInvokeMessage:
         """
-        create an image message
+        创建图片消息
 
-        :param image: the url of the image
-        :return: the image message
+        参数:
+            image (str): 图片的URL地址
+
+        返回:
+            ToolInvokeMessage: 图片消息对象
         """
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image)
         )
 
     def create_file_message(self, file: "File") -> ToolInvokeMessage:
+        """
+        创建文件消息
+
+        参数:
+            file (File): 文件对象
+
+        返回:
+            ToolInvokeMessage: 文件消息对象
+        """
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.FILE,
             message=ToolInvokeMessage.FileMessage(),
@@ -175,10 +266,13 @@ class Tool(ABC):
 
     def create_link_message(self, link: str) -> ToolInvokeMessage:
         """
-        create a link message
+        创建链接消息
 
-        :param link: the url of the link
-        :return: the link message
+        参数:
+            link (str): 链接的URL地址
+
+        返回:
+            ToolInvokeMessage: 链接消息对象
         """
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.LINK, message=ToolInvokeMessage.TextMessage(text=link)
@@ -186,10 +280,13 @@ class Tool(ABC):
 
     def create_text_message(self, text: str) -> ToolInvokeMessage:
         """
-        create a text message
+        创建文本消息
 
-        :param text: the text
-        :return: the text message
+        参数:
+            text (str): 文本内容
+
+        返回:
+            ToolInvokeMessage: 文本消息对象
         """
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.TEXT,
@@ -198,11 +295,14 @@ class Tool(ABC):
 
     def create_blob_message(self, blob: bytes, meta: Optional[dict] = None) -> ToolInvokeMessage:
         """
-        create a blob message
+        创建二进制消息
 
-        :param blob: the blob
-        :param meta: the meta info of blob object
-        :return: the blob message
+        参数:
+            blob (bytes): 二进制数据
+            meta (Optional[dict]): 二进制对象的元信息
+
+        返回:
+            ToolInvokeMessage: 二进制消息对象
         """
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB,
@@ -212,7 +312,13 @@ class Tool(ABC):
 
     def create_json_message(self, object: dict) -> ToolInvokeMessage:
         """
-        create a json message
+        创建JSON消息
+
+        参数:
+            object (dict): JSON对象
+
+        返回:
+            ToolInvokeMessage: JSON消息对象
         """
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.JSON, message=ToolInvokeMessage.JsonMessage(json_object=object)

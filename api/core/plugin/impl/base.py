@@ -50,7 +50,16 @@ class BasePluginClient:
         stream: bool = False,
     ) -> requests.Response:
         """
-        Make a request to the plugin daemon inner API.
+        向插件守护进程内部API发起请求
+        
+        :param method: HTTP请求方法
+        :param path: 请求路径
+        :param headers: 请求头字典
+        :param data: 请求数据，可以是字节、字典或字符串
+        :param params: 查询参数字典
+        :param files: 文件参数字典
+        :param stream: 是否以流式方式处理响应
+        :return: requests.Response对象
         """
         url = plugin_daemon_inner_api_baseurl / path
         headers = headers or {}
@@ -80,11 +89,20 @@ class BasePluginClient:
         files: dict | None = None,
     ) -> Generator[bytes, None, None]:
         """
-        Make a stream request to the plugin daemon inner API
+        向插件守护进程内部API发起流式请求
+        
+        :param method: HTTP请求方法
+        :param path: 请求路径
+        :param params: 查询参数字典
+        :param headers: 请求头字典
+        :param data: 请求数据，可以是字节或字典
+        :param files: 文件参数字典
+        :return: 返回字节数据的生成器
         """
         response = self._request(method, path, headers, data, params, files, stream=True)
         for line in response.iter_lines(chunk_size=1024 * 8):
             line = line.decode("utf-8").strip()
+            # 处理SSE格式的数据行
             if line.startswith("data:"):
                 line = line[5:].strip()
             if line:
@@ -101,7 +119,16 @@ class BasePluginClient:
         files: dict | None = None,
     ) -> Generator[T, None, None]:
         """
-        Make a stream request to the plugin daemon inner API and yield the response as a model.
+        向插件守护进程内部API发起流式请求，并将响应作为模型对象返回
+        
+        :param method: HTTP请求方法
+        :param path: 请求路径
+        :param type: 期望返回的数据类型
+        :param headers: 请求头字典
+        :param data: 请求数据，可以是字节或字典
+        :param params: 查询参数字典
+        :param files: 文件参数字典
+        :return: 返回指定类型数据的生成器
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             yield type(**json.loads(line))  # type: ignore
@@ -117,7 +144,16 @@ class BasePluginClient:
         files: dict | None = None,
     ) -> T:
         """
-        Make a request to the plugin daemon inner API and return the response as a model.
+        向插件守护进程内部API发起请求，并将响应作为模型对象返回
+        
+        :param method: HTTP请求方法
+        :param path: 请求路径
+        :param type: 期望返回的数据类型
+        :param headers: 请求头字典
+        :param data: 请求数据（字节类型）
+        :param params: 查询参数字典
+        :param files: 文件参数字典
+        :return: 指定类型的响应数据
         """
         response = self._request(method, path, headers, data, params, files)
         return type(**response.json())  # type: ignore
@@ -134,7 +170,17 @@ class BasePluginClient:
         transformer: Callable[[dict], dict] | None = None,
     ) -> T:
         """
-        Make a request to the plugin daemon inner API and return the response as a model.
+        向插件守护进程内部API发起请求，并将响应作为模型对象返回
+        
+        :param method: HTTP请求方法
+        :param path: 请求路径
+        :param type: 期望返回的数据类型
+        :param headers: 请求头字典
+        :param data: 请求数据，可以是字节或字典
+        :param params: 查询参数字典
+        :param files: 文件参数字典
+        :param transformer: 数据转换函数
+        :return: 指定类型的响应数据
         """
         try:
             response = self._request(method, path, headers, data, params, files)
@@ -185,7 +231,16 @@ class BasePluginClient:
         files: dict | None = None,
     ) -> Generator[T, None, None]:
         """
-        Make a stream request to the plugin daemon inner API and yield the response as a model.
+        向插件守护进程内部API发起流式请求，并将响应作为模型对象返回
+        
+        :param method: HTTP请求方法
+        :param path: 请求路径
+        :param type: 期望返回的数据类型
+        :param headers: 请求头字典
+        :param data: 请求数据，可以是字节或字典
+        :param params: 查询参数字典
+        :param files: 文件参数字典
+        :return: 返回指定类型数据的生成器
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
@@ -218,7 +273,10 @@ class BasePluginClient:
 
     def _handle_plugin_daemon_error(self, error_type: str, message: str):
         """
-        handle the error from plugin daemon
+        处理来自插件守护进程的错误
+        
+        :param error_type: 错误类型
+        :param message: 错误消息
         """
         match error_type:
             case PluginDaemonInnerError.__name__:

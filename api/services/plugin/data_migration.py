@@ -11,8 +11,16 @@ logger = logging.getLogger(__name__)
 
 
 class PluginDataMigration:
+    """
+    插件数据迁移类，用于处理数据库中插件相关数据的迁移工作
+    """
+
     @classmethod
     def migrate(cls):
+        """
+        执行所有数据迁移操作的主方法
+        按顺序迁移各种表中的插件数据
+        """
         cls.migrate_db_records("providers", "provider_name", ModelProviderID)  # large table
         cls.migrate_db_records("provider_models", "provider_name", ModelProviderID)
         cls.migrate_db_records("provider_orders", "provider_name", ModelProviderID)
@@ -27,6 +35,10 @@ class PluginDataMigration:
 
     @classmethod
     def migrate_datasets(cls):
+        """
+        迁移数据集表中的插件数据
+        特别处理embedding_model_provider字段和retrieval_model中的reranking_provider_name字段
+        """
         table_name = "datasets"
         provider_column_name = "embedding_model_provider"
 
@@ -35,6 +47,7 @@ class PluginDataMigration:
         processed_count = 0
         failed_ids = []
         while True:
+            # 查询需要迁移的数据集记录
             sql = f"""select id, {provider_column_name} as provider_name, retrieval_model from {table_name}
 where {provider_column_name} not like '%/%' and {provider_column_name} is not null and {provider_column_name} != ''
 limit 1000"""
@@ -51,6 +64,7 @@ limit 1000"""
                     if record_id in failed_ids:
                         continue
 
+                    # 检查是否需要更新retrieval_model中的reranking_provider_name字段
                     retrieval_model_changed = False
                     if retrieval_model:
                         if (
@@ -67,7 +81,7 @@ limit 1000"""
                                     fg="white",
                                 )
                             )
-                            # update google to langgenius/gemini/google etc.
+                            # 将简单的provider名称更新为完整的格式，如google更新为langgenius/gemini/google等
                             retrieval_model["reranking_model"]["reranking_provider_name"] = ModelProviderID(
                                 retrieval_model["reranking_model"]["reranking_provider_name"]
                             ).to_string()
@@ -81,15 +95,17 @@ limit 1000"""
                     )
 
                     try:
-                        # update provider name append with "langgenius/{provider_name}/{provider_name}"
+                        # 准备更新参数
                         params = {"record_id": record_id}
                         update_retrieval_model_sql = ""
                         if retrieval_model and retrieval_model_changed:
                             update_retrieval_model_sql = ", retrieval_model = :retrieval_model"
                             params["retrieval_model"] = json.dumps(retrieval_model)
 
+                        # 将provider名称更新为完整格式
                         params["provider_name"] = ModelProviderID(provider_name).to_string()
 
+                        # 执行更新操作
                         sql = f"""update {table_name}
                         set {provider_column_name} =
                         :provider_name
@@ -118,6 +134,7 @@ limit 1000"""
                     current_iter_count += 1
                     processed_count += 1
 
+            # 如果当前迭代没有处理任何记录，则退出循环
             if not current_iter_count:
                 break
 
@@ -127,13 +144,23 @@ limit 1000"""
 
     @classmethod
     def migrate_db_records(cls, table_name: str, provider_column_name: str, provider_cls: type[GenericProviderID]):
+        """
+        迁移数据库记录中的插件provider信息
+
+        Args:
+            table_name (str): 需要迁移的表名
+            provider_column_name (str): provider字段名
+            provider_cls (type[GenericProviderID]): provider ID类，用于转换provider名称格式
+        """
         click.echo(click.style(f"Migrating [{table_name}] data for plugin", fg="white"))
 
         processed_count = 0
         failed_ids = []
         last_id = "00000000-0000-0000-0000-000000000000"
 
+        # 分批处理数据，避免一次性加载过多数据
         while True:
+            # 查询需要迁移的记录
             sql = f"""
                 SELECT id, {provider_column_name} AS provider_name
                 FROM {table_name}
@@ -152,6 +179,7 @@ limit 1000"""
                 current_iter_count = 0
                 batch_updates = []
 
+                # 处理查询结果
                 for i in rs:
                     current_iter_count += 1
                     processed_count += 1
@@ -170,7 +198,7 @@ limit 1000"""
                     )
 
                     try:
-                        # update jina to langgenius/jina_tool/jina etc.
+                        # 将简单的provider名称更新为完整格式，如jina更新为langgenius/jina_tool/jina等
                         updated_value = provider_cls(provider_name).to_string()
                         batch_updates.append((updated_value, record_id))
                     except Exception:
@@ -186,6 +214,7 @@ limit 1000"""
                         )
                         continue
 
+                # 批量更新记录
                 if batch_updates:
                     update_sql = f"""
                         UPDATE {table_name}
@@ -200,6 +229,7 @@ limit 1000"""
                         )
                     )
 
+            # 如果当前迭代没有处理任何记录，则退出循环
             if not current_iter_count:
                 break
 

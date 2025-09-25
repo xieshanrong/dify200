@@ -22,11 +22,18 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def fetch_app_info(cls, app_id: str, tenant_id: str) -> Mapping:
         """
-        Fetch app info
+        获取应用信息
+
+        Args:
+            app_id (str): 应用ID
+            tenant_id (str): 租户ID
+
+        Returns:
+            Mapping: 包含应用参数信息的字典
         """
         app = cls._get_app(app_id, tenant_id)
 
-        """Retrieve app parameters."""
+        # 根据应用模式获取参数
         if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app.workflow
             if workflow is None:
@@ -60,7 +67,20 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         files: list[dict],
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
-        invoke app
+        调用应用
+
+        Args:
+            app_id (str): 应用ID
+            user_id (str): 用户ID
+            tenant_id (str): 租户ID
+            conversation_id (Optional[str]): 对话ID
+            query (Optional[str]): 查询内容
+            stream (bool): 是否流式输出
+            inputs (Mapping): 输入参数
+            files (list[dict]): 文件列表
+
+        Returns:
+            Generator[Mapping | str, None, None] | Mapping: 应用执行结果
         """
         app = cls._get_app(app_id, tenant_id)
         if not user_id:
@@ -94,7 +114,19 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         files: list[dict],
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
-        invoke chat app
+        调用聊天应用
+
+        Args:
+            app (App): 应用对象
+            user (Account | EndUser): 用户对象
+            conversation_id (str): 对话ID
+            query (str): 查询内容
+            stream (bool): 是否流式输出
+            inputs (Mapping): 输入参数
+            files (list[dict]): 文件列表
+
+        Returns:
+            Generator[Mapping | str, None, None] | Mapping: 应用执行结果
         """
         if app.mode == AppMode.ADVANCED_CHAT.value:
             workflow = app.workflow
@@ -153,7 +185,17 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         files: list[dict],
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
-        invoke workflow app
+        调用工作流应用
+
+        Args:
+            app (App): 应用对象
+            user (EndUser | Account): 用户对象
+            stream (bool): 是否流式输出
+            inputs (Mapping): 输入参数
+            files (list[dict]): 文件列表
+
+        Returns:
+            Generator[Mapping | str, None, None] | Mapping: 应用执行结果
         """
         workflow = app.workflow
         if not workflow:
@@ -179,7 +221,17 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         files: list[dict],
     ) -> Generator[Mapping | str, None, None] | Mapping:
         """
-        invoke completion app
+        调用补全应用
+
+        Args:
+            app (App): 应用对象
+            user (EndUser | Account): 用户对象
+            stream (bool): 是否流式输出
+            inputs (Mapping): 输入参数
+            files (list[dict]): 文件列表
+
+        Returns:
+            Generator[Mapping | str, None, None] | Mapping: 应用执行结果
         """
         return CompletionAppGenerator().generate(
             app_model=app,
@@ -192,7 +244,13 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def _get_user(cls, user_id: str) -> Union[EndUser, Account]:
         """
-        get the user by user id
+        根据用户ID获取用户
+
+        Args:
+            user_id (str): 用户ID
+
+        Returns:
+            Union[EndUser, Account]: 用户对象
         """
         with Session(db.engine, expire_on_commit=False) as session:
             stmt = select(EndUser).where(EndUser.id == user_id)
@@ -209,7 +267,14 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def _get_app(cls, app_id: str, tenant_id: str) -> App:
         """
-        get app
+        获取应用
+
+        Args:
+            app_id (str): 应用ID
+            tenant_id (str): 租户ID
+
+        Returns:
+            App: 应用对象
         """
         try:
             app = db.session.query(App).where(App.id == app_id).where(App.tenant_id == tenant_id).first()
@@ -220,3 +285,4 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             raise ValueError("app not found")
 
         return app
+
