@@ -73,13 +73,14 @@ class ToolManager:
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
         """
+        获取硬编码的内置工具提供者控制器。
 
-        get the hardcoded provider
-
+        :param provider: 提供者的名称。
+        :return: 对应的内置工具提供者控制器实例。
         """
 
         if len(cls._hardcoded_providers) == 0:
-            # init the builtin providers
+            # 初始化内置提供者缓存
             cls.load_hardcoded_providers_cache()
 
         return cls._hardcoded_providers[provider]
@@ -89,20 +90,20 @@ class ToolManager:
         cls, provider: str, tenant_id: str
     ) -> BuiltinToolProviderController | PluginToolProviderController:
         """
-        get the builtin provider
+        根据提供者名称获取内置或插件类型的工具提供者控制器。
 
-        :param provider: the name of the provider
-        :param tenant_id: the id of the tenant
-        :return: the provider
+        :param provider: 工具提供者的名称。
+        :param tenant_id: 租户 ID。
+        :return: 内置或插件类型工具提供者控制器。
         """
-        # split provider to
+        # 分割提供者名以进行处理（未完成）
 
         if len(cls._hardcoded_providers) == 0:
-            # init the builtin providers
+            # 初始化内置提供者缓存
             cls.load_hardcoded_providers_cache()
 
         if provider not in cls._hardcoded_providers:
-            # get plugin provider
+            # 尝试获取插件提供者
             plugin_provider = cls.get_plugin_provider(provider, tenant_id)
             if plugin_provider:
                 return plugin_provider
@@ -112,9 +113,13 @@ class ToolManager:
     @classmethod
     def get_plugin_provider(cls, provider: str, tenant_id: str) -> PluginToolProviderController:
         """
-        get the plugin provider
+        获取指定租户下的插件工具提供者控制器。
+
+        :param provider: 插件提供者名称。
+        :param tenant_id: 租户 ID。
+        :return: 插件工具提供者控制器。
         """
-        # check if context is set
+        # 检查上下文是否已设置
         from core.plugin.impl.tool import PluginToolManager
 
         try:
@@ -128,7 +133,7 @@ class ToolManager:
             return plugin_tool_providers[provider]
 
         with contexts.plugin_tool_providers_lock.get():
-            # double check
+            # 双重检查锁机制确保线程安全
             plugin_tool_providers = contexts.plugin_tool_providers.get()
             if provider in plugin_tool_providers:
                 return plugin_tool_providers[provider]
@@ -160,21 +165,20 @@ class ToolManager:
         credential_id: Optional[str] = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
-        get the tool runtime
+        根据提供者类型和相关信息获取对应的工具运行时对象。
 
-        :param provider_type: the type of the provider
-        :param provider_id: the id of the provider
-        :param tool_name: the name of the tool
-        :param tenant_id: the tenant id
-        :param invoke_from: invoke from
-        :param tool_invoke_from: the tool invoke from
-        :param credential_id: the credential id
-
-        :return: the tool
+        :param provider_type: 提供者类型枚举。
+        :param provider_id: 提供者唯一标识符。
+        :param tool_name: 工具名称。
+        :param tenant_id: 租户 ID。
+        :param invoke_from: 调用来源，默认为调试器。
+        :param tool_invoke_from: 工具调用来源，默认为代理。
+        :param credential_id: 凭证 ID（可选）。
+        :return: 返回具体的工具运行时对象。
         """
 
         if provider_type == ToolProviderType.BUILT_IN:
-            # check if the builtin tool need credentials
+            # 处理内置工具提供者逻辑
             provider_controller = cls.get_builtin_provider(provider_id, tenant_id)
 
             builtin_tool = provider_controller.get_tool(tool_name)
@@ -196,7 +200,7 @@ class ToolManager:
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
                 provider_id_entity = ToolProviderID(provider_id)
-                # get specific credentials
+                # 获取特定凭证信息
                 if is_valid_uuid(credential_id):
                     try:
                         builtin_provider_stmt = select(BuiltinToolProvider).where(
@@ -207,13 +211,13 @@ class ToolManager:
                     except Exception as e:
                         builtin_provider = None
                         logger.info("Error getting builtin provider %s:%s", credential_id, e, exc_info=True)
-                    # if the provider has been deleted, raise an error
+                    # 如果提供者已被删除，则抛出异常
                     if builtin_provider is None:
                         raise ToolProviderNotFoundError(f"provider has been deleted: {credential_id}")
 
-                # fallback to the default provider
+                # 回退到默认提供者
                 if builtin_provider is None:
-                    # use the default provider
+                    # 使用默认提供者
                     with Session(db.engine) as session:
                         builtin_provider = session.scalar(
                             sa.select(BuiltinToolProvider)
@@ -248,23 +252,23 @@ class ToolManager:
                 ),
             )
 
-            # decrypt the credentials
+            # 解密凭据数据
             decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(builtin_provider.credentials)
 
-            # check if the credentials is expired
+            # 判断凭据是否过期并刷新
             if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
-                # TODO: circular import
+                # TODO: 循环导入问题待解决
                 from core.plugin.impl.oauth import OAuthHandler
                 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-                # refresh the credentials
+                # 刷新凭据
                 tool_provider = ToolProviderID(provider_id)
                 provider_name = tool_provider.provider_name
                 redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
                 system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
 
                 oauth_handler = OAuthHandler()
-                # refresh the credentials
+                # 执行凭据刷新操作
                 refreshed_credentials = oauth_handler.refresh_credentials(
                     tenant_id=tenant_id,
                     user_id=builtin_provider.user_id,
@@ -274,7 +278,7 @@ class ToolManager:
                     system_credentials=system_credentials or {},
                     credentials=decrypted_credentials,
                 )
-                # update the credentials
+                # 更新数据库中的加密凭据及过期时间
                 builtin_provider.encrypted_credentials = (
                     TypeAdapter(dict[str, Any])
                     .dump_json(encrypter.encrypt(dict(refreshed_credentials.credentials)))
@@ -354,7 +358,14 @@ class ToolManager:
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
         """
-        get the agent tool runtime
+        获取用于代理执行的工具运行时对象。
+
+        :param tenant_id: 租户 ID。
+        :param app_id: 应用 ID。
+        :param agent_tool: 代理工具实体。
+        :param invoke_from: 调用来源，默认为调试器。
+        :param variable_pool: 变量池（可选）。
+        :return: 工具运行时对象。
         """
         tool_entity = cls.get_tool_runtime(
             provider_type=agent_tool.provider_type,
@@ -370,7 +381,7 @@ class ToolManager:
         runtime_parameters = cls._convert_tool_parameters_type(
             parameters, variable_pool, agent_tool.tool_parameters, typ="agent"
         )
-        # decrypt runtime parameters
+        # 解密运行时参数
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
             tool_runtime=tool_entity,
@@ -396,7 +407,15 @@ class ToolManager:
         variable_pool: Optional["VariablePool"] = None,
     ) -> Tool:
         """
-        get the workflow tool runtime
+        获取工作流中使用的工具运行时对象。
+
+        :param tenant_id: 租户 ID。
+        :param app_id: 应用 ID。
+        :param node_id: 工作流节点 ID。
+        :param workflow_tool: 工作流工具实体。
+        :param invoke_from: 调用来源，默认为调试器。
+        :param variable_pool: 变量池（可选）。
+        :return: 工具运行时对象。
         """
 
         tool_runtime = cls.get_tool_runtime(
@@ -413,7 +432,7 @@ class ToolManager:
         runtime_parameters = cls._convert_tool_parameters_type(
             parameters, variable_pool, workflow_tool.tool_configurations, typ="workflow"
         )
-        # decrypt runtime parameters
+        # 解密运行时参数
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
             tool_runtime=tool_runtime,
@@ -439,7 +458,15 @@ class ToolManager:
         credential_id: Optional[str] = None,
     ) -> Tool:
         """
-        get tool runtime from plugin
+        从插件中获取工具运行时对象。
+
+        :param tool_type: 工具提供者类型。
+        :param tenant_id: 租户 ID。
+        :param provider: 提供者名称。
+        :param tool_name: 工具名称。
+        :param tool_parameters: 工具参数字典。
+        :param credential_id: 凭证 ID（可选）。
+        :return: 工具运行时对象。
         """
         tool_entity = cls.get_tool_runtime(
             provider_type=tool_type,
@@ -454,7 +481,7 @@ class ToolManager:
         parameters = tool_entity.get_merged_runtime_parameters()
         for parameter in parameters:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # save tool parameter to tool entity memory
+                # 保存表单参数至内存
                 value = parameter.init_frontend_parameter(tool_parameters.get(parameter.name))
                 runtime_parameters[parameter.name] = value
 
@@ -464,12 +491,12 @@ class ToolManager:
     @classmethod
     def get_hardcoded_provider_icon(cls, provider: str) -> tuple[str, str]:
         """
-        get the absolute path of the icon of the hardcoded provider
+        获取硬编码提供者的图标文件路径及其 MIME 类型。
 
-        :param provider: the name of the provider
-        :return: the absolute path of the icon, the mime type of the icon
+        :param provider: 提供者名称。
+        :return: 图标绝对路径与 MIME 类型组成的元组。
         """
-        # get provider
+        # 获取提供者控制器
         provider_controller = cls.get_hardcoded_provider(provider)
 
         absolute_path = path.join(
@@ -480,23 +507,33 @@ class ToolManager:
             "_assets",
             provider_controller.entity.identity.icon,
         )
-        # check if the icon exists
+        # 验证图标是否存在
         if not path.exists(absolute_path):
             raise ToolProviderNotFoundError(f"builtin provider {provider} icon not found")
 
-        # get the mime type
+        # 获取 MIME 类型
         mime_type, _ = mimetypes.guess_type(absolute_path)
         mime_type = mime_type or "application/octet-stream"
 
         return absolute_path, mime_type
 
+
     @classmethod
     def list_hardcoded_providers(cls):
-        # use cache first
+        """
+        列出所有硬编码的内置工具提供者（BuiltinToolProviderController）。
+
+        使用缓存机制避免重复加载。如果缓存未命中，则通过锁机制确保线程安全，
+        并调用 [_list_hardcoded_providers](file://D:\projectWorkSpace\aiAgentProjectWorkSpace\dify_base\api\core\tools\tool_manager.py#L537-L572) 方法进行实际加载。
+
+        :yield: BuiltinToolProviderController 实例
+        """
+        # 先尝试从缓存中获取
         if cls._builtin_providers_loaded:
             yield from list(cls._hardcoded_providers.values())
             return
 
+        # 加锁以保证并发安全
         with cls._builtin_provider_lock:
             if cls._builtin_providers_loaded:
                 yield from list(cls._hardcoded_providers.values())
@@ -507,7 +544,10 @@ class ToolManager:
     @classmethod
     def list_plugin_providers(cls, tenant_id: str) -> list[PluginToolProviderController]:
         """
-        list all the plugin providers
+        获取指定租户的所有插件工具提供者。
+
+        :param tenant_id: 租户 ID
+        :return: 插件工具提供者的控制器列表
         """
         from core.plugin.impl.tool import PluginToolManager
 
@@ -528,16 +568,24 @@ class ToolManager:
         cls, tenant_id: str
     ) -> Generator[BuiltinToolProviderController | PluginToolProviderController, None, None]:
         """
-        list all the builtin providers
+        获取所有内置工具提供者，包括硬编码和插件类型的提供者。
+
+        :param tenant_id: 租户 ID
+        :yield: 内置或插件工具提供者的控制器实例
         """
         yield from cls.list_hardcoded_providers()
-        # get plugin providers
+        # 获取插件提供者
         yield from cls.list_plugin_providers(tenant_id)
 
     @classmethod
     def _list_hardcoded_providers(cls) -> Generator[BuiltinToolProviderController, None, None]:
         """
-        list all the builtin providers
+        遍历并初始化所有硬编码的内置工具提供者。
+
+        扫描 `builtin_tool/providers` 目录下的模块文件夹，动态导入并实例化每个提供者类，
+        同时将它们注册到内部缓存中，并记录其包含的工具标签信息。
+
+        :yield: 初始化后的 BuiltinToolProviderController 实例
         """
         for provider_path in listdir(path.join(path.dirname(path.realpath(__file__)), "builtin_tool", "providers")):
             if provider_path.startswith("__"):
@@ -547,7 +595,7 @@ class ToolManager:
                 if provider_path.startswith("__"):
                     continue
 
-                # init provider
+                # 初始化提供者
                 try:
                     provider_class = load_single_subclass_from_source(
                         module_name=f"core.tools.builtin_tool.providers.{provider_path}.{provider_path}",
@@ -569,30 +617,35 @@ class ToolManager:
                 except Exception:
                     logger.exception("load builtin provider %s", provider_path)
                     continue
-        # set builtin providers loaded
+        # 标记内置提供者已加载完成
         cls._builtin_providers_loaded = True
 
     @classmethod
     def load_hardcoded_providers_cache(cls):
+        """
+        强制预加载所有硬编码的内置工具提供者到缓存中。
+        """
         for _ in cls.list_hardcoded_providers():
             pass
 
     @classmethod
     def clear_hardcoded_providers_cache(cls):
+        """
+        清除硬编码内置工具提供者的缓存状态。
+        """
         cls._hardcoded_providers = {}
         cls._builtin_providers_loaded = False
 
     @classmethod
     def get_tool_label(cls, tool_name: str) -> Union[I18nObject, None]:
         """
-        get the tool label
+        获取指定工具名称对应的国际化标签对象。
 
-        :param tool_name: the name of the tool
-
-        :return: the label of the tool
+        :param tool_name: 工具名称
+        :return: 对应的 I18nObject 或 None（若不存在）
         """
         if len(cls._builtin_tools_labels) == 0:
-            # init the builtin providers
+            # 初始化内置提供者
             cls.load_hardcoded_providers_cache()
 
         if tool_name not in cls._builtin_tools_labels:
@@ -603,10 +656,14 @@ class ToolManager:
     @classmethod
     def list_default_builtin_providers(cls, tenant_id: str) -> list[BuiltinToolProvider]:
         """
-        list all the builtin providers
+        查询当前租户下默认配置的内置工具提供者。
+
+        按照是否为默认、创建时间排序后去重选择每组中的第一条记录。
+
+        :param tenant_id: 租户 ID
+        :return: 默认的内置工具提供者实体列表
         """
-        # according to multi credentials, select the one with is_default=True first, then created_at oldest
-        # for compatibility with old version
+        # 根据多凭证规则选取 is_default=True 的优先项，其次按创建时间倒序排列
         sql = """
                 SELECT DISTINCT ON (tenant_id, provider) id
                 FROM tool_builtin_providers
@@ -621,6 +678,17 @@ class ToolManager:
     def list_providers_from_api(
         cls, user_id: str, tenant_id: str, typ: ToolProviderTypeApiLiteral
     ) -> list[ToolProviderApiEntity]:
+        """
+        综合列出 API 请求所需的各类工具提供者信息。
+
+        支持过滤不同类型的提供者：builtin, api, workflow, mcp。
+        包括权限控制、标签处理等逻辑。
+
+        :param user_id: 用户 ID
+        :param tenant_id: 租户 ID
+        :param typ: 提供者类型过滤器
+        :return: 工具提供者 API 实体列表
+        """
         result_providers: dict[str, ToolProviderApiEntity] = {}
 
         filters = []
@@ -639,9 +707,9 @@ class ToolManager:
                     for provider in cls.list_default_builtin_providers(tenant_id)
                 }
 
-                # append builtin providers
+                # 添加内置提供者
                 for provider in builtin_providers:
-                    # handle include, exclude
+                    # 处理 include/exclude 过滤条件
                     if is_filtered(
                         include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
                         exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
@@ -660,7 +728,7 @@ class ToolManager:
                     else:
                         result_providers[f"builtin_provider.{user_provider.name}"] = user_provider
 
-            # get db api providers
+            # 获取数据库中的 API 类型提供者
             if "api" in filters:
                 db_api_providers: list[ApiToolProvider] = (
                     db.session.query(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id).all()
@@ -671,7 +739,7 @@ class ToolManager:
                     for provider in db_api_providers
                 ]
 
-                # get labels
+                # 获取标签信息
                 labels = ToolLabelManager.get_tools_labels([x["controller"] for x in api_provider_controllers])
 
                 for api_provider_controller in api_provider_controllers:
@@ -684,7 +752,7 @@ class ToolManager:
                     result_providers[f"api_provider.{user_provider.name}"] = user_provider
 
             if "workflow" in filters:
-                # get workflow providers
+                # 获取工作流类型提供者
                 workflow_providers: list[WorkflowToolProvider] = (
                     db.session.query(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id).all()
                 )
@@ -696,7 +764,7 @@ class ToolManager:
                             ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
                         )
                     except Exception:
-                        # app has been deleted
+                        # 应用已被删除的情况忽略
                         pass
 
                 labels = ToolLabelManager.get_tools_labels(
@@ -721,12 +789,12 @@ class ToolManager:
         cls, tenant_id: str, provider_id: str
     ) -> tuple[ApiToolProviderController, dict[str, Any]]:
         """
-        get the api provider
+        获取指定 API 提供者的控制器及原始凭据信息。
 
-        :param tenant_id: the id of the tenant
-        :param provider_id: the id of the provider
-
-        :return: the provider controller, the credentials
+        :param tenant_id: 租户 ID
+        :param provider_id: 提供者 ID
+        :return: 控制器与凭据组成的元组
+        :raises ToolProviderNotFoundError: 若找不到对应提供者则抛出异常
         """
         provider: ApiToolProvider | None = (
             db.session.query(ApiToolProvider)
@@ -742,7 +810,7 @@ class ToolManager:
 
         auth_type = ApiProviderAuthType.NONE
         provider_auth_type = provider.credentials.get("auth_type")
-        if provider_auth_type in ("api_key_header", "api_key"):  # backward compatibility
+        if provider_auth_type in ("api_key_header", "api_key"):  # 向后兼容
             auth_type = ApiProviderAuthType.API_KEY_HEADER
         elif provider_auth_type == "api_key_query":
             auth_type = ApiProviderAuthType.API_KEY_QUERY
@@ -758,12 +826,12 @@ class ToolManager:
     @classmethod
     def get_mcp_provider_controller(cls, tenant_id: str, provider_id: str) -> MCPToolProviderController:
         """
-        get the api provider
+        获取指定 MCP 提供者的控制器。
 
-        :param tenant_id: the id of the tenant
-        :param provider_id: the id of the provider
-
-        :return: the provider controller, the credentials
+        :param tenant_id: 租户 ID
+        :param provider_id: 提供者标识符
+        :return: MCP 提供者控制器
+        :raises ToolProviderNotFoundError: 若找不到对应提供者则抛出异常
         """
         provider: MCPToolProvider | None = (
             db.session.query(MCPToolProvider)
@@ -784,7 +852,12 @@ class ToolManager:
     @classmethod
     def user_get_api_provider(cls, provider: str, tenant_id: str):
         """
-        get api provider
+        获取用户可见的 API 提供者详细信息。
+
+        :param provider: 提供者名称
+        :param tenant_id: 租户 ID
+        :return: 包含图标、描述、凭据等字段的字典结构数据
+        :raises ValueError: 当提供者不存在时抛出错误
         """
         provider_name = provider
         provider_obj: ApiToolProvider | None = (
@@ -804,10 +877,10 @@ class ToolManager:
         except Exception:
             credentials = {}
 
-        # package tool provider controller
+        # 构造工具提供者控制器
         auth_type = ApiProviderAuthType.NONE
         credentials_auth_type = credentials.get("auth_type")
-        if credentials_auth_type in ("api_key_header", "api_key"):  # backward compatibility
+        if credentials_auth_type in ("api_key_header", "api_key"):  # 向后兼容
             auth_type = ApiProviderAuthType.API_KEY_HEADER
         elif credentials_auth_type == "api_key_query":
             auth_type = ApiProviderAuthType.API_KEY_QUERY
@@ -816,7 +889,7 @@ class ToolManager:
             provider_obj,
             auth_type,
         )
-        # init tool configuration
+        # 初始化工具配置加密器
         encrypter, _ = create_tool_provider_encrypter(
             tenant_id=tenant_id,
             controller=controller,
@@ -829,7 +902,7 @@ class ToolManager:
         except Exception:
             icon = {"background": "#252525", "content": "\ud83d\ude01"}
 
-        # add tool labels
+        # 添加工具标签
         labels = ToolLabelManager.get_tool_labels(controller)
 
         return cast(
@@ -851,6 +924,12 @@ class ToolManager:
 
     @classmethod
     def generate_builtin_tool_icon_url(cls, provider_id: str) -> str:
+        """
+        生成内置工具提供者的图标访问地址。
+
+        :param provider_id: 提供者 ID
+        :return: 图标 URL 字符串
+        """
         return str(
             URL(dify_config.CONSOLE_API_URL or "/")
             / "console"
@@ -865,6 +944,13 @@ class ToolManager:
 
     @classmethod
     def generate_plugin_tool_icon_url(cls, tenant_id: str, filename: str) -> str:
+        """
+        生成插件工具提供者的图标访问地址。
+
+        :param tenant_id: 租户 ID
+        :param filename: 文件名
+        :return: 图标 URL 字符串
+        """
         return str(
             URL(dify_config.CONSOLE_API_URL or "/")
             / "console"
@@ -878,6 +964,13 @@ class ToolManager:
 
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str):
+        """
+        生成工作流工具提供者的图标信息。
+
+        :param tenant_id: 租户 ID
+        :param provider_id: 提供者 ID
+        :return: 图标 JSON 数据或默认占位图
+        """
         try:
             workflow_provider: WorkflowToolProvider | None = (
                 db.session.query(WorkflowToolProvider)
@@ -895,6 +988,13 @@ class ToolManager:
 
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str):
+        """
+        生成 API 工具提供者的图标信息。
+
+        :param tenant_id: 租户 ID
+        :param provider_id: 提供者 ID
+        :return: 图标 JSON 数据或默认占位图
+        """
         try:
             api_provider: ApiToolProvider | None = (
                 db.session.query(ApiToolProvider)
@@ -912,6 +1012,13 @@ class ToolManager:
 
     @classmethod
     def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict[str, str] | str:
+        """
+        生成 MCP 工具提供者的图标信息。
+
+        :param tenant_id: 租户 ID
+        :param provider_id: 提供者 ID
+        :return: 图标 JSON 数据或默认占位图
+        """
         try:
             mcp_provider: MCPToolProvider | None = (
                 db.session.query(MCPToolProvider)
@@ -934,12 +1041,13 @@ class ToolManager:
         provider_id: str,
     ) -> Union[str, dict[str, Any]]:
         """
-        get the tool icon
+        根据提供者类型和 ID 获取相应的工具图标资源。
 
-        :param tenant_id: the id of the tenant
-        :param provider_type: the type of the provider
-        :param provider_id: the id of the provider
-        :return:
+        :param tenant_id: 租户 ID
+        :param provider_type: 提供者类型枚举值
+        :param provider_id: 提供者 ID
+        :return: 图标 URL 字符串或图标数据字典
+        :raises ValueError: 不支持的提供者类型或未找到提供者时抛出异常
         """
         provider_type = provider_type
         provider_id = provider_id
@@ -977,7 +1085,15 @@ class ToolManager:
         typ: Literal["agent", "workflow", "tool"] = "workflow",
     ) -> dict[str, Any]:
         """
-        Convert tool parameters type
+        转换工具参数类型，根据输入来源提取运行时参数值。
+
+        :param parameters: 工具参数定义列表
+        :param variable_pool: 变量池对象（可选）
+        :param tool_configurations: 工具配置映射表
+        :param typ: 参数使用场景类型，默认为 workflow
+        :return: 运行时参数键值对字典
+        :raises ValueError: 在 agent 场景下遇到文件类型参数时报错
+        :raises ToolParameterError: 参数解析失败时抛出异常
         """
         from core.workflow.nodes.tool.entities import ToolNodeData
         from core.workflow.nodes.tool.exc import ToolParameterError
@@ -995,12 +1111,13 @@ class ToolManager:
                 and typ == "agent"
             ):
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
-            # save tool parameter to tool entity memory
+            # 将工具参数保存至工具实体内存中
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 if variable_pool:
                     config = tool_configurations.get(parameter.name, {})
                     if not (config and isinstance(config, dict) and config.get("value") is not None):
                         continue
+                    # 解析工具输入配置，并根据类型决定如何取值
                     tool_input = ToolNodeData.ToolInput(**tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
                         variable = variable_pool.get(tool_input.value)
@@ -1017,6 +1134,7 @@ class ToolManager:
                     runtime_parameters[parameter.name] = parameter_value
 
                 else:
+                    # 若无变量池，则直接取前端传入值
                     value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
