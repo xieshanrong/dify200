@@ -1,3 +1,4 @@
+
 import enum
 import json
 from typing import Any, Optional, Union
@@ -9,6 +10,15 @@ from core.tools.entities.common_entities import I18nObject
 
 
 class PluginParameterOption(BaseModel):
+    """
+    插件参数选项类，用于定义可选参数的值、标签和图标。
+
+    属性:
+        value (str): 选项的值。
+        label (I18nObject): 显示给用户的国际化标签。
+        icon (Optional[str]): 选项的图标，可以是 URL 或 base64 编码的图片。
+    """
+
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
     icon: Optional[str] = Field(
@@ -18,6 +28,15 @@ class PluginParameterOption(BaseModel):
     @field_validator("value", mode="before")
     @classmethod
     def transform_id_to_str(cls, value) -> str:
+        """
+        将非字符串类型的值转换为字符串。
+
+        参数:
+            value: 输入值。
+
+        返回:
+            str: 转换后的字符串值。
+        """
         if not isinstance(value, str):
             return str(value)
         else:
@@ -26,7 +45,7 @@ class PluginParameterOption(BaseModel):
 
 class PluginParameterType(enum.StrEnum):
     """
-    all available parameter types
+    所有可用的插件参数类型枚举。
     """
 
     STRING = CommonParameterType.STRING.value
@@ -52,7 +71,7 @@ class PluginParameterType(enum.StrEnum):
 
 class MCPServerParameterType(enum.StrEnum):
     """
-    MCP server got complex parameter types
+    MCP 服务器支持的复杂参数类型。
     """
 
     ARRAY = "array"
@@ -60,6 +79,13 @@ class MCPServerParameterType(enum.StrEnum):
 
 
 class PluginParameterAutoGenerate(BaseModel):
+    """
+    自动生成功能配置类。
+
+    子类:
+        Type (enum.StrEnum): 自动生成功能的类型。
+    """
+
     class Type(enum.StrEnum):
         PROMPT_INSTRUCTION = "prompt_instruction"
 
@@ -67,10 +93,35 @@ class PluginParameterAutoGenerate(BaseModel):
 
 
 class PluginParameterTemplate(BaseModel):
+    """
+    参数模板配置类。
+
+    属性:
+        enabled (bool): 是否启用 Jinja 模板功能，默认为 False。
+    """
+
     enabled: bool = Field(default=False, description="Whether the parameter is jinja enabled")
 
 
 class PluginParameter(BaseModel):
+    """
+    插件参数定义类，用于描述一个插件参数的各种属性。
+
+    属性:
+        name (str): 参数名称。
+        label (I18nObject): 显示给用户的标签。
+        placeholder (Optional[I18nObject]): 占位符文本。
+        scope (str | None): 参数作用域。
+        auto_generate (Optional[PluginParameterAutoGenerate]): 自动生成功能配置。
+        template (Optional[PluginParameterTemplate]): 模板相关配置。
+        required (bool): 是否为必填参数，默认为 False。
+        default (Optional[Union[float, int, str]]): 默认值。
+        min (Optional[Union[float, int]]): 最小值限制。
+        max (Optional[Union[float, int]]): 最大值限制。
+        precision (Optional[int]): 数值精度。
+        options (list[PluginParameterOption]): 可选值列表。
+    """
+
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
     placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
@@ -87,12 +138,30 @@ class PluginParameter(BaseModel):
     @field_validator("options", mode="before")
     @classmethod
     def transform_options(cls, v):
+        """
+        验证并转换 options 字段为列表格式。
+
+        参数:
+            v: 输入值。
+
+        返回:
+            list: 转换后的列表。
+        """
         if not isinstance(v, list):
             return []
         return v
 
 
 def as_normal_type(typ: enum.StrEnum):
+    """
+    将特定类型的参数映射为标准类型字符串。
+
+    参数:
+        typ (enum.StrEnum): 参数类型枚举。
+
+    返回:
+        str: 标准类型字符串。
+    """
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
@@ -102,6 +171,19 @@ def as_normal_type(typ: enum.StrEnum):
 
 
 def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
+    """
+    根据参数类型对值进行类型转换。
+
+    参数:
+        typ (enum.StrEnum): 参数类型。
+        value (Any): 待转换的原始值。
+
+    返回:
+        Any: 转换后的值。
+
+    异常:
+        ValueError: 当值无法正确转换时抛出。
+    """
     try:
         match typ.value:
             case PluginParameterType.STRING | PluginParameterType.SECRET_INPUT | PluginParameterType.SELECT:
@@ -191,7 +273,18 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
 
 def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: Any):
     """
-    init frontend parameter by rule
+    根据规则初始化前端参数值。
+
+    参数:
+        rule (PluginParameter): 参数规则定义。
+        type (enum.StrEnum): 参数类型。
+        value (Any): 实际传入的参数值。
+
+    返回:
+        Any: 初始化后的参数值。
+
+    异常:
+        ValueError: 当参数值不符合要求时抛出。
     """
     parameter_value = value
     if not parameter_value and parameter_value != 0:

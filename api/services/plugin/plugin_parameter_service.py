@@ -23,31 +23,42 @@ class PluginParameterService:
         provider_type: Literal["tool"],
     ) -> Sequence[PluginParameterOption]:
         """
-        Get dynamic select options for a plugin parameter.
+        获取插件参数的动态下拉选项。
 
         Args:
-            tenant_id: The tenant ID.
-            plugin_id: The plugin ID.
-            provider: The provider name.
-            action: The action name.
-            parameter: The parameter name.
+            tenant_id (str): 租户ID。
+            user_id (str): 用户ID。
+            plugin_id (str): 插件ID。
+            provider (str): 提供者名称。
+            action (str): 操作名称。
+            parameter (str): 参数名称。
+            provider_type (Literal["tool"]): 提供者类型，当前仅支持 "tool"。
+
+        Returns:
+            Sequence[PluginParameterOption]: 动态下拉选项列表。
+
+        Raises:
+            ValueError: 当提供者类型无效或找不到对应的内置提供者时抛出异常。
         """
         credentials: Mapping[str, Any] = {}
 
+        # 根据不同的 provider_type 处理逻辑
         match provider_type:
             case "tool":
+                # 获取工具提供者的控制器实例
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                # init tool configuration
+
+                # 初始化加密器用于解密凭据
                 encrypter, _ = create_tool_provider_encrypter(
                     tenant_id=tenant_id,
                     controller=provider_controller,
                 )
 
-                # check if credentials are required
+                # 判断是否需要凭据信息
                 if not provider_controller.need_credentials:
                     credentials = {}
                 else:
-                    # fetch credentials from db
+                    # 从数据库中获取并解密凭据信息
                     with Session(db.engine) as session:
                         db_record = (
                             session.query(BuiltinToolProvider)
@@ -65,6 +76,7 @@ class PluginParameterService:
             case _:
                 raise ValueError(f"Invalid provider type: {provider_type}")
 
+        # 调用客户端获取动态选择项
         return (
             DynamicSelectClient()
             .fetch_dynamic_select_options(tenant_id, user_id, plugin_id, provider, action, credentials, parameter)

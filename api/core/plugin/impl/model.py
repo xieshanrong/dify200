@@ -1,3 +1,4 @@
+
 import binascii
 from collections.abc import Generator, Sequence
 from typing import IO, Optional
@@ -24,7 +25,10 @@ from core.plugin.impl.base import BasePluginClient
 class PluginModelClient(BasePluginClient):
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
         """
-        Fetch model providers for the given tenant.
+        获取指定租户的模型提供商列表。
+
+        :param tenant_id: 租户ID。
+        :return: 模型提供商实体列表。
         """
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -45,7 +49,16 @@ class PluginModelClient(BasePluginClient):
         credentials: dict,
     ) -> AIModelEntity | None:
         """
-        Get model schema
+        获取模型的元数据结构定义（schema）。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model_type: 模型类型。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :return: AI模型实体或None。
         """
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -75,7 +88,14 @@ class PluginModelClient(BasePluginClient):
         self, tenant_id: str, user_id: str, plugin_id: str, provider: str, credentials: dict
     ) -> bool:
         """
-        validate the credentials of the provider
+        验证提供商的认证凭据是否有效。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param credentials: 认证信息字典。
+        :return: 凭据验证结果布尔值。
         """
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -113,7 +133,16 @@ class PluginModelClient(BasePluginClient):
         credentials: dict,
     ) -> bool:
         """
-        validate the credentials of the provider
+        验证特定模型的认证凭据是否有效。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model_type: 模型类型。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :return: 凭据验证结果布尔值。
         """
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -157,7 +186,20 @@ class PluginModelClient(BasePluginClient):
         stream: bool = True,
     ) -> Generator[LLMResultChunk, None, None]:
         """
-        Invoke llm
+        调用大语言模型进行推理。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param prompt_messages: 输入提示消息列表。
+        :param model_parameters: 可选的模型参数。
+        :param tools: 可选的工具调用列表。
+        :param stop: 停止词列表。
+        :param stream: 是否以流式方式返回响应。
+        :yield: 大语言模型输出的结果块。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -203,7 +245,18 @@ class PluginModelClient(BasePluginClient):
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> int:
         """
-        Get number of tokens for llm
+        获取大语言模型输入文本的token数量。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model_type: 模型类型。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param prompt_messages: 输入提示消息列表。
+        :param tools: 工具调用列表。
+        :return: token数量整数。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -245,7 +298,17 @@ class PluginModelClient(BasePluginClient):
         input_type: str,
     ) -> TextEmbeddingResult:
         """
-        Invoke text embedding
+        调用文本嵌入模型生成向量表示。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param texts: 待处理文本列表。
+        :param input_type: 输入类型标识符。
+        :return: 文本嵌入结果对象。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -286,7 +349,16 @@ class PluginModelClient(BasePluginClient):
         texts: list[str],
     ) -> list[int]:
         """
-        Get number of tokens for text embedding
+        获取文本嵌入模型中各段文本对应的token数量。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param texts: 待分析文本列表。
+        :return: 各段文本的token数量组成的列表。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -329,7 +401,19 @@ class PluginModelClient(BasePluginClient):
         top_n: Optional[int] = None,
     ) -> RerankResult:
         """
-        Invoke rerank
+        对文档进行重排序操作。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param query: 查询语句。
+        :param docs: 待排序文档列表。
+        :param score_threshold: 最低得分阈值。
+        :param top_n: 返回前N个结果。
+        :return: 重新排序后的结果对象。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -373,7 +457,17 @@ class PluginModelClient(BasePluginClient):
         voice: str,
     ) -> Generator[bytes, None, None]:
         """
-        Invoke tts
+        将文本转换为语音音频数据。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param content_text: 待合成的文本内容。
+        :param voice: 使用的声音风格。
+        :yield: 音频二进制数据流。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -417,7 +511,16 @@ class PluginModelClient(BasePluginClient):
         language: Optional[str] = None,
     ):
         """
-        Get tts model voices
+        获取TTS模型支持的所有声音选项。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param language: 可选的语言筛选条件。
+        :return: 支持的声音选项列表。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -461,7 +564,16 @@ class PluginModelClient(BasePluginClient):
         file: IO[bytes],
     ) -> str:
         """
-        Invoke speech to text
+        将语音文件转录为文字内容。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param file: 包含语音数据的IO对象。
+        :return: 转录出的文字字符串。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
@@ -501,7 +613,16 @@ class PluginModelClient(BasePluginClient):
         text: str,
     ) -> bool:
         """
-        Invoke moderation
+        判断给定文本是否违反了平台的内容审核规则。
+
+        :param tenant_id: 租户ID。
+        :param user_id: 用户ID。
+        :param plugin_id: 插件ID。
+        :param provider: 提供商名称。
+        :param model: 模型名称。
+        :param credentials: 认证信息字典。
+        :param text: 待检测的文本内容。
+        :return: 审核通过与否的布尔值。
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",

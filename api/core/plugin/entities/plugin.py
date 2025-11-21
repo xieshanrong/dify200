@@ -117,7 +117,7 @@ class PluginDeclaration(BaseModel):
         def validate_minimum_dify_version(cls, v: Optional[str]) -> Optional[str]:
             """
             验证最低Dify版本号格式
-            
+
             :param v: 版本号字符串
             :return: 验证通过的版本号
             :raises ValueError: 版本号格式无效时抛出异常
@@ -156,7 +156,7 @@ class PluginDeclaration(BaseModel):
     def validate_version(cls, v: str) -> str:
         """
         验证插件版本号格式
-        
+
         :param v: 版本号字符串
         :return: 验证通过的版本号
         :raises ValueError: 版本号格式无效时抛出异常
@@ -172,7 +172,7 @@ class PluginDeclaration(BaseModel):
     def validate_category(cls, values: dict):
         """
         根据提供的组件自动检测插件类别
-        
+
         :param values: 模型字段值字典
         :return: 更新后的字段值字典
         """
@@ -192,8 +192,8 @@ class PluginDeclaration(BaseModel):
 
 class PluginInstallation(BasePluginEntity):
     """
-    插件安装信息类
-    
+
+
     :param tenant_id: 租户ID
     :param endpoints_setups: 端点设置数量
     :param endpoints_active: 活跃端点数量
@@ -222,7 +222,7 @@ class PluginInstallation(BasePluginEntity):
 class PluginEntity(PluginInstallation):
     """
     插件实体类
-    
+
     :param name: 插件名称
     :param installation_id: 安装ID
     :param version: 插件版本
@@ -235,7 +235,7 @@ class PluginEntity(PluginInstallation):
     def set_plugin_id(self):
         """
         设置插件ID到工具声明中
-        
+
         :return: 当前实例
         """
         if self.declaration.tool:
@@ -258,7 +258,7 @@ class PluginDependency(BaseModel):
     class Github(BaseModel):
         """
         GitHub依赖信息
-        
+
         :param repo: 仓库地址
         :param version: 版本号
         :param package: 包名
@@ -273,7 +273,7 @@ class PluginDependency(BaseModel):
         def plugin_unique_identifier(self) -> str:
             """
             获取插件唯一标识符
-            
+
             :return: 插件唯一标识符
             """
             return self.github_plugin_unique_identifier
@@ -281,7 +281,7 @@ class PluginDependency(BaseModel):
     class Marketplace(BaseModel):
         """
         市场依赖信息
-        
+
         :param marketplace_plugin_unique_identifier: 市场插件唯一标识符
         """
         marketplace_plugin_unique_identifier: str
@@ -290,7 +290,7 @@ class PluginDependency(BaseModel):
         def plugin_unique_identifier(self) -> str:
             """
             获取插件唯一标识符
-            
+
             :return: 插件唯一标识符
             """
             return self.marketplace_plugin_unique_identifier
@@ -298,7 +298,7 @@ class PluginDependency(BaseModel):
     class Package(BaseModel):
         """
         包依赖信息
-        
+
         :param plugin_unique_identifier: 插件唯一标识符
         """
         plugin_unique_identifier: str
@@ -311,7 +311,7 @@ class PluginDependency(BaseModel):
 class MissingPluginDependency(BaseModel):
     """
     缺失的插件依赖类
-    
+
     :param plugin_unique_identifier: 插件唯一标识符
     :param current_identifier: 当前标识符
     """

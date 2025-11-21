@@ -1,3 +1,4 @@
+
 from flask_restx import Resource
 
 from controllers.console.wraps import setup_required
@@ -37,6 +38,18 @@ from models.model import EndUser
 
 @inner_api_ns.route("/invoke/llm")
 class PluginInvokeLLMApi(Resource):
+    """
+    插件接口：调用大语言模型（LLM）功能。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeLLM): 调用LLM所需的请求参数。
+
+    返回:
+        Streaming response: LLM调用结果的流式响应。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -60,6 +73,18 @@ class PluginInvokeLLMApi(Resource):
 
 @inner_api_ns.route("/invoke/llm/structured-output")
 class PluginInvokeLLMWithStructuredOutputApi(Resource):
+    """
+    插件接口：调用支持结构化输出的大语言模型（LLM）功能。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeLLMWithStructuredOutput): 结构化输出调用所需的请求参数。
+
+    返回:
+        Streaming response: LLM结构化输出调用结果的流式响应。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -85,6 +110,18 @@ class PluginInvokeLLMWithStructuredOutputApi(Resource):
 
 @inner_api_ns.route("/invoke/text-embedding")
 class PluginInvokeTextEmbeddingApi(Resource):
+    """
+    插件接口：调用文本嵌入（Text Embedding）模型。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeTextEmbedding): 文本嵌入调用所需的请求参数。
+
+    返回:
+        JSON response: 包含嵌入向量的结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -115,6 +152,18 @@ class PluginInvokeTextEmbeddingApi(Resource):
 
 @inner_api_ns.route("/invoke/rerank")
 class PluginInvokeRerankApi(Resource):
+    """
+    插件接口：调用重排序（Rerank）模型。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeRerank): 重排序调用所需的请求参数。
+
+    返回:
+        JSON response: 包含重排序结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -141,6 +190,18 @@ class PluginInvokeRerankApi(Resource):
 
 @inner_api_ns.route("/invoke/tts")
 class PluginInvokeTTSApi(Resource):
+    """
+    插件接口：调用文本转语音（TTS）模型。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeTTS): TTS调用所需的请求参数。
+
+    返回:
+        Streaming response: TTS调用结果的流式响应。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -168,6 +229,18 @@ class PluginInvokeTTSApi(Resource):
 
 @inner_api_ns.route("/invoke/speech2text")
 class PluginInvokeSpeech2TextApi(Resource):
+    """
+    插件接口：调用语音转文本（Speech-to-Text）模型。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeSpeech2Text): 语音转文本调用所需的请求参数。
+
+    返回:
+        JSON response: 包含识别结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -194,6 +267,18 @@ class PluginInvokeSpeech2TextApi(Resource):
 
 @inner_api_ns.route("/invoke/moderation")
 class PluginInvokeModerationApi(Resource):
+    """
+    插件接口：调用内容审核（Moderation）模型。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeModeration): 内容审核调用所需的请求参数。
+
+    返回:
+        JSON response: 包含审核结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -220,6 +305,18 @@ class PluginInvokeModerationApi(Resource):
 
 @inner_api_ns.route("/invoke/tool")
 class PluginInvokeToolApi(Resource):
+    """
+    插件接口：调用工具（Tool）功能。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeTool): 工具调用所需的请求参数。
+
+    返回:
+        Streaming response: 工具调用结果的流式响应。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -252,6 +349,18 @@ class PluginInvokeToolApi(Resource):
 
 @inner_api_ns.route("/invoke/parameter-extractor")
 class PluginInvokeParameterExtractorNodeApi(Resource):
+    """
+    插件接口：调用参数提取节点（Parameter Extractor Node）。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeParameterExtractorNode): 参数提取调用所需的请求参数。
+
+    返回:
+        JSON response: 包含提取结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -285,6 +394,18 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
 
 @inner_api_ns.route("/invoke/question-classifier")
 class PluginInvokeQuestionClassifierNodeApi(Resource):
+    """
+    插件接口：调用问题分类节点（Question Classifier Node）。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeQuestionClassifierNode): 问题分类调用所需的请求参数。
+
+    返回:
+        JSON response: 包含分类结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -318,6 +439,18 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
 
 @inner_api_ns.route("/invoke/app")
 class PluginInvokeAppApi(Resource):
+    """
+    插件接口：调用应用（Application）功能。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeApp): 应用调用所需的请求参数。
+
+    返回:
+        Streaming response: 应用调用结果的流式响应。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -348,6 +481,18 @@ class PluginInvokeAppApi(Resource):
 
 @inner_api_ns.route("/invoke/encrypt")
 class PluginInvokeEncryptApi(Resource):
+    """
+    插件接口：加密或解密数据。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeEncrypt): 加密/解密调用所需的请求参数。
+
+    返回:
+        JSON response: 包含加密/解密结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -375,6 +520,18 @@ class PluginInvokeEncryptApi(Resource):
 
 @inner_api_ns.route("/invoke/summary")
 class PluginInvokeSummaryApi(Resource):
+    """
+    插件接口：调用摘要生成功能。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestInvokeSummary): 摘要生成调用所需的请求参数。
+
+    返回:
+        JSON response: 包含摘要结果或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -405,6 +562,18 @@ class PluginInvokeSummaryApi(Resource):
 
 @inner_api_ns.route("/upload/file/request")
 class PluginUploadFileRequestApi(Resource):
+    """
+    插件接口：请求文件上传的签名URL。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestRequestUploadFile): 文件上传请求参数。
+
+    返回:
+        JSON response: 包含签名URL或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant
@@ -426,6 +595,18 @@ class PluginUploadFileRequestApi(Resource):
 
 @inner_api_ns.route("/fetch/app/info")
 class PluginFetchAppInfoApi(Resource):
+    """
+    插件接口：获取应用信息。
+
+    参数:
+        user_model (Account | EndUser): 当前请求的用户模型。
+        tenant_model (Tenant): 当前租户模型。
+        payload (RequestFetchAppInfo): 获取应用信息的请求参数。
+
+    返回:
+        JSON response: 包含应用信息或错误信息。
+    """
+
     @setup_required
     @plugin_inner_api_only
     @get_user_tenant

@@ -98,7 +98,7 @@ class PluginInstaller(BasePluginClient):
         }
         return self._request_with_plugin_daemon_response(
             "POST",
-            f"plugin/{tenant_id}/management/install/upload/package",
+            f"plugin/{tenant_id}/managementinstall/upload/package",
             PluginDecodeResponse,
             files=body,
             data=data,

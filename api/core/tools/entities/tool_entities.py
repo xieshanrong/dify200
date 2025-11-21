@@ -245,11 +245,12 @@ class ToolInvokeMessage(BaseModel):
         BLOB_CHUNK = "blob_chunk"                   # 二进制数据块消息
         RETRIEVER_RESOURCES = "retriever_resources" # 检索资源消息
 
-    type: MessageType = MessageType.TEXT
     """
         消息类型，默认为文本类型
         plain text, image url or link url
     """
+    type: MessageType = MessageType.TEXT
+
     message: (
         JsonMessage
         | TextMessage
